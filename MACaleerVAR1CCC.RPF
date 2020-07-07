@@ -1,0 +1,138 @@
+***********************************************************************************************
+* MC Aleer paper, VAR1 , GARCH(1,1) , VARMA variance CCC GARCH -Shanghai
+**************************************************************************************************
+open data LogReturn.xls
+data(format=xls,org=columns) / OilRmb SG000001
+compute gstart=2,gend=2354
+system(model=var1)
+variables OilRmb SG000001
+lags 1
+end(system)
+
+
+garch(p=1,q=1,model=var1,mv=CC,variance=varma,pmethod=simplex,piters=5,hmatrices=Varmah, MVHSERIES=VarmaHmatrix ) gstart gend OilRmb SG000001
+
+
+open copy McAl-SG000001-Hmatrix.xls
+copy(data,format=xls,org=columns)  /VarmaHmatrix
+
+
+
+***********************************************************************************************
+* MC Aleer paper, VAR1 , GARCH(1,1) , VARMA variance CCC GARCH -Shenzen
+**************************************************************************************************
+open data LogReturn.xls
+data(format=xls,org=columns) / OilRmb SZ399001
+compute gstart=2,gend=2354
+system(model=var1)
+variables OilRmb SZ399001
+lags 1
+end(system)
+
+
+garch(p=1,q=1,model=var1,mv=CC,variance=varma,pmethod=simplex,piters=5,hmatrices=Varmah, MVHSERIES=VarmaHmatrix ) gstart gend OilRmb SZ399001
+
+
+open copy McAl-SZ399001-Hmatrix.xls
+copy(data,format=xls,org=columns)  /VarmaHmatrix
+
+
+***********************************************************************************************
+* MC Aleer paper, VAR1 , GARCH(1,1) , VARMA variance CCC GARCH -HS300 or CSI 300
+**************************************************************************************************
+open data LogReturn.xls
+data(format=xls,org=columns) / OilRmb HS000300
+compute gstart=2,gend=2354
+system(model=var1)
+variables OilRmb HS000300
+lags 1
+end(system)
+
+
+garch(p=1,q=1,model=var1,mv=CC,variance=varma,pmethod=simplex,piters=5,hmatrices=Varmah, MVHSERIES=VarmaHmatrix ) gstart gend OilRmb HS000300
+
+
+open copy McAl-HS000300-Hmatrix.xls
+copy(data,format=xls,org=columns)  /VarmaHmatrix
+
+
+***********************************************************************************************
+* MC Aleer paper, VAR1 , GARCH(1,1) , VARMA variance CCC GARCH -Oil Index
+**************************************************************************************************
+open data LogReturn.xls
+data(format=xls,org=columns) / OilRmb CI005001
+compute gstart=2,gend=2354
+system(model=var1)
+variables OilRmb CI005001
+lags 1
+end(system)
+
+
+garch(p=1,q=1,model=var1,mv=CC,variance=varma,pmethod=simplex,piters=5,hmatrices=Varmah, MVHSERIES=VarmaHmatrix ) gstart gend OilRmb CI005001
+
+
+open copy McAl-CI005001-Hmatrix.xls
+copy(data,format=xls,org=columns)  /VarmaHmatrix
+
+
+***********************************************************************************************
+* MC Aleer paper, VAR1 , GARCH(1,1) , VARMA variance CCC GARCH -Coal Index
+**************************************************************************************************
+open data LogReturn.xls
+data(format=xls,org=columns) / OilRmb CI005002
+compute gstart=2,gend=2354
+system(model=var1)
+variables OilRmb CI005002
+lags 1
+end(system)
+
+
+garch(p=1,q=1,model=var1,mv=CC,variance=varma,pmethod=simplex,piters=5,hmatrices=Varmah, MVHSERIES=VarmaHmatrix ) gstart gend OilRmb CI005002
+
+
+open copy McAl-CI005002-Hmatrix.xls
+copy(data,format=xls,org=columns)  /VarmaHmatrix
+
+***********************************************************************************************
+* MC Aleer paper, VAR1 , GARCH(1,1) , VARMA variance CCC GARCH -Non-Ferous Metals  Index
+**************************************************************************************************
+open data LogReturn.xls
+data(format=xls,org=columns) / OilRmb CI005003
+compute gstart=2,gend=2354
+system(model=var1)
+variables OilRmb CI005003
+lags 1
+end(system)
+
+
+garch(p=1,q=1,model=var1,mv=CC,variance=varma,pmethod=simplex,piters=20,hmatrices=Varmah, MVHSERIES=VarmaHmatrix ) gstart gend OilRmb CI005003
+
+
+
+open copy McAl-CI005003-Hmatrix.xls
+copy(data,format=xls,org=columns)  /VarmaHmatrix
+
+
+
+***********************************************************************************************
+* MC Aleer paper, VAR1 , GARCH(1,1) , VARMA variance CCC GARCH -Iron Index
+**************************************************************************************************
+open data LogReturn.xls
+data(format=xls,org=columns) / OilRmb CI005005
+compute gstart=2,gend=2354
+system(model=var1)
+variables OilRmb CI005005
+lags 1
+end(system)
+
+
+garch(p=1,q=1,model=var1,mv=CC,variance=varma,pmethod=simplex,piters=5,hmatrices=Varmah, MVHSERIES=VarmaHmatrix ) gstart gend OilRmb CI005005
+
+
+open copy McAl-CI005005-Hmatrix.xls
+copy(data,format=xls,org=columns)  /VarmaHmatrix
+
+
+
+
+
