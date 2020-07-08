@@ -1,0 +1,19 @@
+***********************************************************************************************
+* MC Aleer paper, VAR1 , GARCH(1,1) , VARMA variance CCC GARCH -Iron
+**************************************************************************************************
+open data LogReturn3.xls
+data(format=xls,org=columns) / WTI CI005005
+compute gstart=2,gend=2254
+system(model=var1)
+variables WTI CI005005
+lags 1
+end(system)
+
+
+garch(p=1,q=1,model=var1,mv=CC,variance=varma,pmethod=simplex,piters=5,hmatrices=Varmah, MVHSERIES=VarmaHmatrix ) gstart gend WTI CI005005
+
+
+
+open copy McAl-CI005005-Hmatrix.xls
+copy(data,format=xls,org=columns)  /VarmaHmatrix
+
