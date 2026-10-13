@@ -16,11 +16,13 @@ This repository makes that analysis **reproducible in pure Python** — data pre
 
 ## Key findings, reproduced
 
-**Oil is weakly, and dynamically, linked to Chinese markets.** The conditional correlation with oil never rises far above 0.2, even through the 2008 crash — the central result of the paper.
+**Oil is weakly linked to Chinese markets, and the link is time-varying.** From the DCC-GARCH re-estimation, the conditional correlation with oil sits around 0.1–0.2 for most of the sample and rises during the 2008 global crisis, but never approaches the tight co-movement among the Chinese series.
 
 ![Dynamic conditional correlation](results/figures/fig4_dynamic_correlation.png)
 
-The same structure holds across regimes: in the correlation matrix below, the OPEC-oil row stays low (≈0.1–0.2) through the 2007 run-up, the 2008 crisis, and the later sample, while the Chinese series move tightly together (≈0.7–0.98).
+(The paper's published McAleer VAR-CCC model holds correlation *constant* by construction, so its time-variation lives entirely in the variances and hedge ratios; the time-varying correlation shown here comes from the Python DCC-GARCH re-estimation.)
+
+The correlation matrix makes the cross-section explicit: the OPEC-oil row stays low through the 2007 run-up, the 2008 crisis, and the later sample, while the Chinese series move tightly together (≈0.7–0.98).
 
 ![Conditional correlation matrix at three dates](results/figures/fig7_correlation_matrix.png)
 

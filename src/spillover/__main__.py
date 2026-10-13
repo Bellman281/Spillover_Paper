@@ -46,16 +46,15 @@ def main() -> int:
     he.round(4).to_csv(tables / "table2_hedging.csv")
     print(he.round(3).to_string())
 
-    print("[4/6] static figures")
+    print("[4/6] figures — prices, returns, conditional volatility, hedging")
     plots.fig_prices(prices, figs)
     plots.fig_returns(returns, figs)
     plots.fig_cond_vol(derived, figs)
-    plots.fig_dcc(derived, figs)
     plots.fig_hedge(derived, figs)
     plots.fig_effectiveness(he, figs)
 
     if args.no_dcc:
-        print("[5/6] DCC re-estimation skipped")
+        print("[5/6] DCC re-estimation skipped (correlation figures need it)")
         print("[6/6] done")
         return 0
 
@@ -64,7 +63,8 @@ def main() -> int:
     R_t, _, a, b = garch.fit_dcc(returns[cols])
     print(f"      DCC(a={a:.3f}, b={b:.3f}), persistence a+b={a + b:.3f}")
 
-    print("[6/6] correlation-matrix figure")
+    print("[6/6] dynamic-correlation figures")
+    plots.fig_dcc(R_t, returns.index, figs)
     short = {
         "SZ399001": "Shenzhen", "SG000001": "Shanghai", "HS000300": "CSI",
         "CI005001": "OilSec", "CI005002": "Coal", "CI005003": "Non-ferr", "CI005005": "Iron",
