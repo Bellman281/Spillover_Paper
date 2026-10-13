@@ -1,0 +1,11 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# Keep results/ committed (figures are referenced by the README),
+# but ignore local scratch
+.ipynb_checkpoints/
+.DS_Store
