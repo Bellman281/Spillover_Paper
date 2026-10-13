@@ -94,17 +94,27 @@ def fig_cond_vol(derived: dict[str, pd.DataFrame], out: Path) -> Path:
     return _save(fig, out, "fig3_conditional_volatility.png")
 
 
-def fig_dcc(derived: dict[str, pd.DataFrame], out: Path) -> Path:
+def fig_dcc(R_t, dates, out: Path) -> Path:
+    """Time-varying oil–market conditional correlations from the DCC-GARCH.
+
+    (The paper's McAleer VAR-CCC model holds correlation constant by
+    construction; the dynamic view comes from the Python DCC re-estimation.)
+    Oil is column 0 of R_t; markets are columns 1..7 in ``MARKETS`` order.
+    """
+    names = list(MARKETS.values())
     fig, axes = plt.subplots(4, 2, figsize=(10, 9), sharex=True)
-    for ax, (color, (code, name)) in zip(axes.ravel(), zip(SERIES, MARKETS.items())):
-        d = derived[code]
-        ax.plot(d.index, d["corr"], color=color, lw=1.0)
-        ax.axhline(d["corr"].mean(), color=INK, lw=0.8, ls="--", alpha=0.6)
+    for k, (ax, (color, name)) in enumerate(zip(axes.ravel(), zip(SERIES, names))):
+        series = R_t[:, 0, k + 1]
+        ax.plot(dates, series, color=color, lw=0.8)
+        ax.axhline(series.mean(), color=INK, lw=0.8, ls="--", alpha=0.6)
         ax.set_title(f"oil – {name}", fontsize=10, loc="left")
         ax.set_ylim(-0.3, 0.6)
         ax.margins(x=0.01)
     axes.ravel()[-1].axis("off")
-    fig.suptitle("Dynamic conditional correlation with OPEC oil", x=0.12, ha="left", fontsize=13, weight="bold")
+    fig.suptitle(
+        "Dynamic conditional correlation with OPEC oil (DCC-GARCH)",
+        x=0.12, ha="left", fontsize=13, weight="bold",
+    )
     fig.tight_layout(rect=(0, 0, 1, 0.98))
     return _save(fig, out, "fig4_dynamic_correlation.png")
 
