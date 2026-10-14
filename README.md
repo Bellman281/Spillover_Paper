@@ -106,6 +106,16 @@ The sample now spans the 2026 US–Iran / Strait of Hormuz period — a natural 
 
 > **Caveats.** This is a consistent-method comparison (Python DCC-GARCH on both periods), not a RATS replication — see *What runs in Python vs. RATS* above. The Chinese sector indices here are **Shenwan** industry indices used as a free stand-in for the paper's CITIC sectors. And the 2026 crude tail shows some extreme daily moves that post-date verification — sanity-check `OilRmb` for spring 2026 against a primary source (EIA / a terminal) before quoting specific days. See [`EXTENSION.md`](EXTENSION.md) for the full runbook; every fetcher takes `--oil brent|wti` and `--start/--end`.
 
+## Robustness & refinements
+
+Is the weak result real, or an artifact of the daily DCC-GARCH? Three stress-tests (full write-up in [`ROBUSTNESS.md`](ROBUSTNESS.md)) say the broad-market decoupling is real, but the daily single-average framing understated the energy-sector hedge and the crisis behaviour:
+
+- **Horizon.** Brent closes after the Chinese session, so daily same-date returns are non-synchronous. The energy-sector hedge roughly *triples* at a realistic weekly/biweekly horizon (oil sector hedging effectiveness 1.9% → 5.8%), while the broad indices stay flat at every horizon. The weak hedge is partly a daily-frequency artifact — but only where a real link exists. (`scripts/multihorizon.py`)
+- **Direction.** Oil Granger-causes the Chinese oil and coal sectors at *every* lag 1–5 (p < 0.001), with no reverse causality — the small-open-economy pattern, and the reason the same-day correlation looks weak (the transmission is lagged). The broad-market effect is shallow (Shanghai significant only at lags 1–3; CSI 300 marginal). Long-run: only coal shows an economically sensible cointegration with oil. (`scripts/granger_vecm.py`)
+- **Regime.** A 2-state Markov-switching model shows the oil–China correlation roughly *doubles* in the turbulent volatility regime (Shanghai 0.07 → 0.13, coal 0.10 → 0.18) — oil diversifies until a crisis, then the link reappears. (`scripts/regimes.py`)
+
+A scoped plan for the monetary-policy angle (with an honest difficulty read) is in [`docs/monetary_policy_plan.md`](docs/monetary_policy_plan.md).
+
 ## Repository layout
 
 ```
@@ -122,12 +132,17 @@ src/spillover/   the Python package
   __main__.py     one-command pipeline
 scripts/         extension runbook (fetch_data, fetch_scan, scan_sectors,
                  fetch_fuel, fuel_passthrough, run_extension, oil_shock_window)
+                 robustness (multihorizon, granger_vecm, regimes)
 results/         generated tables and figures
   extension/      two-period comparison (REPORT.md)
   scan/           36-sector oil-correlation scan (SCAN.md)
   fuel/           administered-price pass-through (FUEL.md)
   shock/          2026 oil-shock window (SHOCK.md)
-docs/            data dictionary
+  multihorizon/   hedge by horizon (MULTIHORIZON.md)
+  causality/      Granger + VECM (CAUSALITY.md)
+  regimes/        regime-switching correlation (REGIMES.md)
+docs/            data dictionary + monetary_policy_plan.md
+EXTENSION.md     decade-later runbook   ROBUSTNESS.md  robustness write-up
 ```
 
 ## Citation
