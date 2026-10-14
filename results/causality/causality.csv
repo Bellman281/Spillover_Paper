@@ -1,0 +1,5 @@
+market,granger_oil->mkt_p_lag1,oil->mkt_sig_lags,granger_mkt->oil_p_lag1,mkt->oil_sig_lags,johansen_trace,johansen_crit95,cointegrated,vecm_ect_speed,vecm_longrun_beta
+Oil (sector),0.0,5,0.3205,0,12.5192,15.4943,False,,
+Coal,0.0,5,0.0747,0,24.767,15.4943,True,0.0052,1.2159
+CSI 300,0.0522,0,0.2539,0,21.1751,15.4943,True,0.0005,12.1316
+Shanghai Composite,0.0061,3,0.3142,0,18.9803,15.4943,True,0.0006,12.369
