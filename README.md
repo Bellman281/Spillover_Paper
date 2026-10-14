@@ -76,6 +76,36 @@ The hedging math is checked against the paper's own `hedging.xlsx` (run `PYTHONP
 
 **What is _not_ claimed:** bit-for-bit reproduction of the published tables. The estimation ran in RATS; `hedging.xlsx` is a partial working file (some sheets are duplicated/stale); and this data is the companion sector specification (oil, coal, non-ferrous, iron), not the published paper's main sector set. The figures are faithful derivations of the committed VARMA-CCC model outputs; the Python DCC-GARCH is an independent re-estimation.
 
+## A decade later — does the result still hold? (2014–2026)
+
+The published study ran to October 2014. The [`extension-2014-2025`](EXTENSION.md) branch re-asks the question on a fresh sample that now runs to **September 2026**, using the *same* pure-Python DCC-GARCH engine on both periods. The short answer: **the conclusion holds, and if anything it has strengthened.** Oil is an even weaker co-mover with Chinese equities than it was a decade ago — confirmed four independent ways.
+
+### 1. The oil–China link has fallen further
+
+Running the identical method on both samples, the average oil–China conditional correlation **fell from 0.166 (2004–2014) to 0.094 (2014–2026)**, and hedging effectiveness from 3.5% to 1.2%. Oil diversifies Chinese equities even better now; the lower hedging effectiveness is just the flip side — with so little oil-driven variance left, there is less for an oil hedge to remove.
+
+![Two-period comparison](results/extension/fig_extension_comparison.png)
+
+### 2. It's the whole market, not the paper's seven series
+
+Scanning oil against a broad **36-sector** universe (Shenwan Level-1 industries plus the major broad indices), **not one sector clears a correlation of 0.12.** The strongest oil link in the entire Chinese market is the petroleum sector itself (0.116), then coal (0.103); banks, tech, pharma, autos and the rest all sit below 0.09. Mean |correlation| across everything is just **0.053**. The ranking is economically sensible — the two physically oil-exposed sectors lead, growth/defensive names trail — which is itself a check that the signal is real.
+
+![Sector scan](results/scan/fig_sector_scan.png)
+
+### 3. Why — China's administered fuel prices absorb the shock
+
+The mechanism, measured on real NDRC retail-price data: the pass-through of crude to the pump is **β ≈ 0.18 for gasoline and 0.20 for diesel** (robust SEs, n = 291). Only about a fifth of a crude move reaches the Chinese consumer — the state absorbs the rest via a $40/$130 crude band, a skip-small-moves rule, and a ~40% fixed tax wedge. With the domestic cost of oil deliberately smoothed, oil-price swings carry little information for Chinese demand, corporate margins, or equity returns.
+
+![Fuel pass-through](results/fuel/fig_fuel_passthrough.png)
+
+### 4. It even survives the 2026 oil-supply scare
+
+The sample now spans the 2026 US–Iran / Strait of Hormuz period — a natural stress test. Tracking the *time-varying* oil–China correlation and marking the biggest crude moves of 2026 (data-driven, no event date assumed): the 2026 average correlation is just **0.010**, the peak only **0.34** (briefly, in early February), and on the most violent crude days of the year (−12% to −16%) the correlation sat **near zero**. A genuine oil shock pulled oil around wildly; Chinese equities barely noticed.
+
+![2026 oil-shock window](results/shock/fig_oil_shock_window.png)
+
+> **Caveats.** This is a consistent-method comparison (Python DCC-GARCH on both periods), not a RATS replication — see *What runs in Python vs. RATS* above. The Chinese sector indices here are **Shenwan** industry indices used as a free stand-in for the paper's CITIC sectors. And the 2026 crude tail shows some extreme daily moves that post-date verification — sanity-check `OilRmb` for spring 2026 against a primary source (EIA / a terminal) before quoting specific days. See [`EXTENSION.md`](EXTENSION.md) for the full runbook; every fetcher takes `--oil brent|wti` and `--start/--end`.
+
 ## Repository layout
 
 ```
@@ -86,9 +116,17 @@ src/spillover/   the Python package
   descriptive.py  Table 1 — moments + specification tests
   hmatrix.py      read H-matrices -> correlations, hedge ratios, effectiveness
   garch.py        pure-Python two-step DCC-GARCH
+  scan.py         bivariate oil-vs-sector DCC scan engine
+  extension.py    two-period analyze / compare
   plots.py        all static figures
   __main__.py     one-command pipeline
+scripts/         extension runbook (fetch_data, fetch_scan, scan_sectors,
+                 fetch_fuel, fuel_passthrough, run_extension, oil_shock_window)
 results/         generated tables and figures
+  extension/      two-period comparison (REPORT.md)
+  scan/           36-sector oil-correlation scan (SCAN.md)
+  fuel/           administered-price pass-through (FUEL.md)
+  shock/          2026 oil-shock window (SHOCK.md)
 docs/            data dictionary
 ```
 

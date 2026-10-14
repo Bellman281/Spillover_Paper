@@ -2,8 +2,12 @@
 __pycache__/
 *.py[cod]
 .venv/
+.venv*/
 venv/
 *.egg-info/
+
+# Downloaded data cache (re-fetchable; the assembled source_*.csv is committed)
+data/raw/_cache/
 
 # Keep results/ committed (figures are referenced by the README),
 # but ignore local scratch

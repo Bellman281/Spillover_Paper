@@ -165,6 +165,66 @@ def fig_corr_matrix(R_t, labels, dates, out: Path) -> Path:
     return p
 
 
+def fig_compare(old, new, out: Path) -> Path:
+    """Grouped bars: avg correlation, hedge ratio, hedging effectiveness, two periods."""
+    names = list(old.table.index)
+    y = np.arange(len(names))
+    panels = [
+        ("avg_corr", "Avg conditional correlation with oil", 1.0),
+        ("avg_hedge_ratio", "Avg optimal hedge ratio", 1.0),
+        ("hedging_effectiveness", "Hedging effectiveness", 100.0),
+    ]
+    fig, axes = plt.subplots(1, 3, figsize=(13.5, 4.8), sharey=True)
+    lo = f"{old.start:%Y}–{old.end:%Y}"
+    ne = f"{new.start:%Y}–{new.end:%Y}"
+    for ax, (col, title, scale) in zip(axes, panels):
+        ax.barh(y + 0.2, scale * old.table[col].to_numpy(), height=0.38, color=MUTED, label=lo)
+        ax.barh(y - 0.2, scale * new.table[col].to_numpy(), height=0.38, color=COPPER, label=ne)
+        ax.set_yticks(y, names, fontsize=9)
+        ax.set_title(title, fontsize=11, loc="left")
+        ax.grid(True, axis="x")
+        ax.grid(False, axis="y")
+        ax.invert_yaxis()
+    axes[2].set_xlabel("% variance reduction")
+    axes[0].legend(fontsize=9, loc="lower right")
+    fig.suptitle("Does it hold a decade later?  Oil–China hedging, two periods",
+                 x=0.09, ha="left", fontsize=13, weight="bold")
+    p = out / "fig_extension_comparison.png"
+    fig.savefig(p, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    return p
+
+
+def fig_scan(table: pd.DataFrame, out: Path, oil_label: str = "oil",
+             period: str = "") -> Path:
+    """Ranked bars of average conditional correlation with oil across the universe.
+
+    ``table`` is the output of ``spillover.scan.scan`` (index = market, with an
+    ``avg_corr`` column), already sorted by |corr|. Copper = higher link.
+    ``period`` is an optional "YYYY-YYYY" label for the title.
+    """
+    t = table.iloc[::-1]  # largest at top after barh
+    vals = t["avg_corr"].to_numpy()
+    vmax = max(abs(vals).max(), 1e-6)
+    colors = [COPPER if v >= 0 else SERIES[0] for v in vals]
+    alphas = [0.35 + 0.65 * abs(v) / vmax for v in vals]
+    fig, ax = plt.subplots(figsize=(8.5, max(4.0, 0.34 * len(t))))
+    bars = ax.barh(t.index, vals, color=colors, height=0.68)
+    for b, a in zip(bars, alphas):
+        b.set_alpha(a)
+    for y, v in enumerate(vals):
+        ax.text(v + 0.004 * np.sign(v or 1), y, f"{v:.3f}",
+                va="center", ha="left" if v >= 0 else "right", fontsize=8, color=INK)
+    ax.axvline(0, color=INK, lw=0.8)
+    title = f"Average conditional correlation with {oil_label}"
+    ax.set_title(f"{title}, {period}" if period else title)
+    ax.set_xlabel("avg DCC correlation (bivariate oil–sector GARCH)")
+    ax.grid(True, axis="x")
+    ax.grid(False, axis="y")
+    ax.margins(y=0.01)
+    return _save(fig, out, "fig_sector_scan.png")
+
+
 def fig_effectiveness(he_table: pd.DataFrame, out: Path) -> Path:
     t = he_table.sort_values("hedging_effectiveness")
     fig, ax = plt.subplots(figsize=(8, 4.2))
