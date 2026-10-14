@@ -76,6 +76,17 @@ The hedging math is checked against the paper's own `hedging.xlsx` (run `PYTHONP
 
 **What is _not_ claimed:** bit-for-bit reproduction of the published tables. The estimation ran in RATS; `hedging.xlsx` is a partial working file (some sheets are duplicated/stale); and this data is the companion sector specification (oil, coal, non-ferrous, iron), not the published paper's main sector set. The figures are faithful derivations of the committed VARMA-CCC model outputs; the Python DCC-GARCH is an independent re-estimation.
 
+## Extension — does it still hold a decade later?
+
+The `extension-2014-2025` branch re-runs the question on **2014–2025** data and widens it. See [`EXTENSION.md`](EXTENSION.md) for the full runbook; in short:
+
+- **Does it hold?** The same Python DCC-GARCH on both periods finds the oil–China conditional correlation has *fallen* further (≈ 0.17 → 0.10), so oil is an even weaker co-mover — the diversification conclusion holds and if anything strengthens. (`scripts/run_extension.py` → `results/extension/REPORT.md`)
+- **Across the whole market.** A bivariate oil-vs-sector scan over a broad Shenwan Level-1 universe shows the weak link is not specific to the paper's seven series — mean |correlation| with oil sits near 0.10 across sectors. (`scripts/fetch_scan.py` + `scripts/scan_sectors.py` → `results/scan/SCAN.md`)
+- **Why.** China's NDRC administers the retail fuel price (floor/ceiling on crude, skip-small-moves rule, ~40% tax wedge), so a crude move only partly reaches the pump — a measured pass-through β well below 1. With the domestic cost of oil deliberately smoothed, oil shocks carry little signal for A-share returns. (`scripts/fetch_fuel.py` + `scripts/fuel_passthrough.py` → `results/fuel/FUEL.md`)
+- **Oil benchmark.** Every fetcher takes `--oil brent` (default) or `--oil wti`.
+
+> **Scope note:** the extension data ends **2025-10-13**. The 2026 US–Iran / Strait of Hormuz crisis is *after* the window and is **not** captured here; testing that shock would need a separate, dated data refresh.
+
 ## Repository layout
 
 ```

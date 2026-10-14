@@ -49,3 +49,50 @@ This writes to `results/extension/`:
 - `comparison.csv`, `period_published.csv`, `period_extension.csv`
 
 The machinery is tested; only the later-period data is pending.
+
+## Step 3 — widen the universe (sector scan)
+
+The paper looks at seven series. To check whether the weak-oil-link result is
+specific to those or holds across the market, scan oil against a broad Shenwan
+Level-1 industry universe plus the main broad indices:
+
+```bash
+python scripts/fetch_scan.py                           # --oil wti for WTI
+PYTHONPATH=src python scripts/scan_sectors.py --data data/raw/scan_universe.csv
+```
+
+Writes `results/scan/`: `SCAN.md` (ranked table + read), `fig_sector_scan.png`,
+`scan.csv`. Each market is fit as a bivariate DCC-GARCH against oil; oil is
+aligned pairwise, and any sector with < 250 overlapping observations (many
+Shenwan L1 codes only backfill to the Dec-2021 reclassification) is skipped.
+You can run the scan on the paper's seven series with no extra fetch by pointing
+`--data` at `source_2014_2025.csv`.
+
+## Step 4 — why the link is weak (administered fuel pass-through)
+
+China does not let the pump price float: the NDRC resets retail gasoline/diesel
+about every ten working days, but with a $40 floor and $130 ceiling on crude, a
+skip-small-moves rule, and a ~40% fixed tax wedge. That damping is the mechanism
+behind the decoupling. Measure it directly:
+
+```bash
+python scripts/fetch_fuel.py
+PYTHONPATH=src python scripts/fuel_passthrough.py --data data/raw/china_fuel.csv
+```
+
+Writes `results/fuel/`: `FUEL.md`, `fig_fuel_passthrough.png`, `passthrough.csv`.
+It regresses Δln(fuel) on Δln(crude) at each adjustment event; a pass-through
+β well below 1 shows how little of a crude shock reaches the Chinese consumer —
+and therefore Chinese demand, margins, and equity returns.
+
+## Oil benchmark: Brent or WTI
+
+Every fetcher takes `--oil brent` (default, `BZ=F`) or `--oil wti` (`CL=F`); the
+RMB conversion (× `CNY=X`) is the same. Brent/WTI cache separately, so switching
+does not clobber the other.
+
+## Note on the 2026 US–Iran / Strait of Hormuz crisis
+
+That shock is **not** in this study. The data ends **2025-10-13**, before the
+event. Capturing it would need a data refresh to a 2026 end date and should be
+reported as a separate, clearly-dated cut — not folded into these results.
