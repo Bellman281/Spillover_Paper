@@ -6,7 +6,9 @@ data sites):
 
     python3 -m venv .venv && source .venv/bin/activate
     pip install akshare yfinance -r requirements.txt
-    python scripts/fetch_data.py            # add --refresh to re-download
+    python scripts/fetch_data.py                 # Brent (default)
+    python scripts/fetch_data.py --oil wti        # WTI instead
+    python scripts/fetch_data.py --refresh        # ignore the cache
 
 Writes ``data/raw/source_2014_2025.csv`` in the original schema:
 
@@ -20,29 +22,32 @@ force). Sources:
 - Petroleum (CI005001): spliced Shenwan 采掘 801020 (2014->2021) + 石油石化 801960
   (2021->), handling the Dec-2021 industry reclassification. Free stand-in for
   the paper's CITIC sectors.
-- OilRmb: Brent (Yahoo BZ=F) x USD/CNY (Yahoo CNY=X).
+- OilRmb: crude (Yahoo BZ=F Brent, or CL=F WTI with --oil wti) x USD/CNY (Yahoo CNY=X).
 """
 
 from __future__ import annotations
 
-import sys
+import argparse
 from pathlib import Path
 
-import akshare as ak
 import pandas as pd
 
 START, END = pd.Timestamp("2014-10-18"), pd.Timestamp("2025-10-13")
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "data" / "raw" / "source_2014_2025.csv"
 CACHE = ROOT / "data" / "raw" / "_cache"
-REFRESH = "--refresh" in sys.argv
 
 SCHEMA = ["OilRmb", "SG000001", "SZ399001", "HS000300",
           "CI005001", "CI005002", "CI005003", "CI005005"]
 BROAD = {"SG000001": "sh000001", "SZ399001": "sz399001", "HS000300": "sh000300"}
 SHENWAN = {"CI005002": "801950", "CI005003": "801050", "CI005005": "801040"}
 
+OIL_TICKERS = {"brent": "BZ=F", "wti": "CL=F"}
 
+
+# --------------------------------------------------------------------------- #
+# Reusable helpers (imported by scripts/fetch_scan.py and fetch_fuel.py)
+# --------------------------------------------------------------------------- #
 def _pick(cols, keys):
     for k in keys:
         for c in cols:
@@ -51,7 +56,8 @@ def _pick(cols, keys):
     return None
 
 
-def _series(df: pd.DataFrame, name: str) -> pd.Series:
+def _series(df: pd.DataFrame, name: str,
+            start: pd.Timestamp = START, end: pd.Timestamp = END) -> pd.Series:
     cols = [str(c) for c in df.columns]
     df = df.copy()
     df.columns = cols
@@ -64,13 +70,13 @@ def _series(df: pd.DataFrame, name: str) -> pd.Series:
     s = df[[date_col, close_col]].copy()
     s[date_col] = pd.to_datetime(s[date_col])
     s = s.set_index(date_col)[close_col].astype(float).rename(name).sort_index()
-    return s[(s.index >= START) & (s.index <= END)]
+    return s[(s.index >= start) & (s.index <= end)]
 
 
-def cached(code: str, fetch) -> pd.Series:
+def cached(code: str, fetch, refresh: bool = False) -> pd.Series:
     """Return the series from disk cache, or fetch + cache it."""
     f = CACHE / f"{code}.csv"
-    if f.exists() and not REFRESH:
+    if f.exists() and not refresh:
         s = pd.read_csv(f, index_col=0, parse_dates=True).iloc[:, 0]
         s.name = code
         print(f"     {code:9s} (cached)  {len(s)} rows  {s.index.min():%Y-%m-%d} .. {s.index.max():%Y-%m-%d}")
@@ -83,15 +89,18 @@ def cached(code: str, fetch) -> pd.Series:
 
 
 def fetch_broad(sym):
+    import akshare as ak
     return lambda: _series(ak.stock_zh_index_daily(symbol=sym), "x")
 
 
 def fetch_shenwan(sym):
+    import akshare as ak
     return lambda: _series(ak.index_hist_sw(symbol=sym, period="day"), "x")
 
 
 def fetch_petroleum() -> pd.Series:
     """Splice Shenwan 采掘 (801020, pre-2021) with 石油石化 (801960, 2021+)."""
+    import akshare as ak
     old = _series(ak.index_hist_sw(symbol="801020", period="day"), "x")   # 2014 -> 2021-12
     new = _series(ak.index_hist_sw(symbol="801960", period="day"), "x")   # 2021-12 ->
     new = new * (old.iloc[-1] / new.iloc[0])          # rebase to continue from old
@@ -99,29 +108,40 @@ def fetch_petroleum() -> pd.Series:
     return spliced
 
 
-def fetch_oil_rmb() -> pd.Series:
+def fetch_oil_rmb(oil: str = "brent") -> pd.Series:
+    """crude (USD) x USD/CNY -> oil priced in RMB. oil in {brent, wti}."""
     import yfinance as yf
 
+    ticker = OIL_TICKERS[oil]
     s, e = START.strftime("%Y-%m-%d"), (END + pd.Timedelta(days=1)).strftime("%Y-%m-%d")
 
     def close(tk):
         df = yf.download(tk, start=s, end=e, progress=False, auto_adjust=False)["Close"]
         return (df.iloc[:, 0] if isinstance(df, pd.DataFrame) else df).astype(float)
 
-    brent, fx = close("BZ=F"), close("CNY=X")
-    oil = (brent * fx.reindex(brent.index).ffill()).dropna()
-    oil.index = pd.to_datetime(oil.index)
-    return oil.sort_index()
+    crude, fx = close(ticker), close("CNY=X")
+    oil_rmb = (crude * fx.reindex(crude.index).ffill()).dropna()
+    oil_rmb.index = pd.to_datetime(oil_rmb.index)
+    return oil_rmb.sort_index()
 
 
 def main() -> None:
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--oil", choices=list(OIL_TICKERS), default="brent",
+                    help="crude benchmark for OilRmb (default: brent)")
+    ap.add_argument("--refresh", action="store_true", help="ignore the disk cache")
+    args = ap.parse_args()
+
+    print(f"oil benchmark: {args.oil.upper()} ({OIL_TICKERS[args.oil]})")
     series = {}
     for code, sym in BROAD.items():
-        series[code] = cached(code, fetch_broad(sym))
+        series[code] = cached(code, fetch_broad(sym), args.refresh)
     for code, sym in SHENWAN.items():
-        series[code] = cached(code, fetch_shenwan(sym))
-    series["CI005001"] = cached("CI005001", fetch_petroleum)
-    series["OilRmb"] = cached("OilRmb", fetch_oil_rmb)
+        series[code] = cached(code, fetch_shenwan(sym), args.refresh)
+    series["CI005001"] = cached("CI005001", fetch_petroleum, args.refresh)
+    # cache key carries the benchmark so brent/wti don't clobber each other
+    series["OilRmb"] = cached(f"OilRmb_{args.oil}",
+                              lambda: fetch_oil_rmb(args.oil), args.refresh).rename("OilRmb")
 
     df = pd.concat([series[c].rename(c) for c in SCHEMA], axis=1, sort=True)
     df = df[SCHEMA].dropna()

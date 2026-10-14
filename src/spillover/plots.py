@@ -195,6 +195,33 @@ def fig_compare(old, new, out: Path) -> Path:
     return p
 
 
+def fig_scan(table: pd.DataFrame, out: Path, oil_label: str = "oil") -> Path:
+    """Ranked bars of average conditional correlation with oil across the universe.
+
+    ``table`` is the output of ``spillover.scan.scan`` (index = market, with an
+    ``avg_corr`` column), already sorted by |corr|. Copper = higher link.
+    """
+    t = table.iloc[::-1]  # largest at top after barh
+    vals = t["avg_corr"].to_numpy()
+    vmax = max(abs(vals).max(), 1e-6)
+    colors = [COPPER if v >= 0 else SERIES[0] for v in vals]
+    alphas = [0.35 + 0.65 * abs(v) / vmax for v in vals]
+    fig, ax = plt.subplots(figsize=(8.5, max(4.0, 0.34 * len(t))))
+    bars = ax.barh(t.index, vals, color=colors, height=0.68)
+    for b, a in zip(bars, alphas):
+        b.set_alpha(a)
+    for y, v in enumerate(vals):
+        ax.text(v + 0.004 * np.sign(v or 1), y, f"{v:.3f}",
+                va="center", ha="left" if v >= 0 else "right", fontsize=8, color=INK)
+    ax.axvline(0, color=INK, lw=0.8)
+    ax.set_title(f"Average conditional correlation with {oil_label}, 2014–2025")
+    ax.set_xlabel("avg DCC correlation (bivariate oil–sector GARCH)")
+    ax.grid(True, axis="x")
+    ax.grid(False, axis="y")
+    ax.margins(y=0.01)
+    return _save(fig, out, "fig_sector_scan.png")
+
+
 def fig_effectiveness(he_table: pd.DataFrame, out: Path) -> Path:
     t = he_table.sort_values("hedging_effectiveness")
     fig, ax = plt.subplots(figsize=(8, 4.2))
