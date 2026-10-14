@@ -20,7 +20,7 @@ The sandboxed shells can't reach market-data sites, so fetch locally:
 
 ```bash
 pip install akshare pandas
-python scripts/fetch_data.py        # writes data/raw/source_2014_2025.csv
+python scripts/fetch_data.py        # 2014 -> 2026-09-30, writes data/raw/source_extension.csv
 ```
 
 `fetch_data.py` pulls daily closes for the three broad indices (Shanghai,
@@ -38,7 +38,7 @@ date, OilRmb, SZ399001, SG000001, HS000300, CI005001, CI005002, CI005003, CI0050
 ## Step 2 — run the comparison
 
 ```bash
-PYTHONPATH=src python scripts/run_extension.py --new data/raw/source_2014_2025.csv
+PYTHONPATH=src python scripts/run_extension.py --new data/raw/source_extension.csv
 ```
 
 This writes to `results/extension/`:
@@ -66,7 +66,7 @@ Writes `results/scan/`: `SCAN.md` (ranked table + read), `fig_sector_scan.png`,
 aligned pairwise, and any sector with < 250 overlapping observations (many
 Shenwan L1 codes only backfill to the Dec-2021 reclassification) is skipped.
 You can run the scan on the paper's seven series with no extra fetch by pointing
-`--data` at `source_2014_2025.csv`.
+`--data` at `source_extension.csv`.
 
 ## Step 4 — why the link is weak (administered fuel pass-through)
 
@@ -85,14 +85,23 @@ It regresses Δln(fuel) on Δln(crude) at each adjustment event; a pass-through
 β well below 1 shows how little of a crude shock reaches the Chinese consumer —
 and therefore Chinese demand, margins, and equity returns.
 
+## Sample window and the 2026 Strait of Hormuz period
+
+The fetchers default to **2014-10-18 → 2026-09-30**, so the extended sample now
+runs into 2026 and spans the US–Iran / Strait of Hormuz period. Override either
+end with `--start` / `--end` (YYYY-MM-DD) on any fetcher:
+
+```bash
+python scripts/fetch_scan.py --end 2026-08-31
+```
+
+The disk cache is keyed by the end date, so moving `--end` re-fetches cleanly
+instead of serving the old truncated series. Every figure and report prints the
+*actual* first/last dates from the data — so whether the Hormuz shock shows up as
+a spike in the oil–China correlation is read off `results/`, not assumed.
+
 ## Oil benchmark: Brent or WTI
 
 Every fetcher takes `--oil brent` (default, `BZ=F`) or `--oil wti` (`CL=F`); the
 RMB conversion (× `CNY=X`) is the same. Brent/WTI cache separately, so switching
 does not clobber the other.
-
-## Note on the 2026 US–Iran / Strait of Hormuz crisis
-
-That shock is **not** in this study. The data ends **2025-10-13**, before the
-event. Capturing it would need a data refresh to a 2026 end date and should be
-reported as a separate, clearly-dated cut — not folded into these results.

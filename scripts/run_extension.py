@@ -7,7 +7,7 @@ a figure, and a short REPORT.md with an automatic verdict.
 Usage:
     PYTHONPATH=src python scripts/run_extension.py \
         --old data/raw/source.csv \
-        --new data/raw/source_2014_2025.csv
+        --new data/raw/source_extension.csv
 """
 
 from __future__ import annotations

@@ -39,6 +39,7 @@ from fetch_data import (  # reuse the proven helpers
     fetch_oil_rmb,
     fetch_petroleum,
     fetch_shenwan,
+    set_window,
 )
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -93,9 +94,12 @@ SHENWAN_L1 = {
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--oil", choices=list(OIL_TICKERS), default="brent")
+    ap.add_argument("--start", default=None, help="sample start (YYYY-MM-DD)")
+    ap.add_argument("--end", default=None, help="sample end (YYYY-MM-DD); default 2026-09-30")
     ap.add_argument("--refresh", action="store_true", help="ignore the disk cache")
     args = ap.parse_args()
 
+    set_window(args.start, args.end)
     print(f"oil benchmark: {args.oil.upper()} ({OIL_TICKERS[args.oil]})")
     series: dict[str, pd.Series] = {}
     skipped: list[str] = []

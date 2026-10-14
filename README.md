@@ -85,7 +85,7 @@ The `extension-2014-2025` branch re-runs the question on **2014–2025** data an
 - **Why.** China's NDRC administers the retail fuel price (floor/ceiling on crude, skip-small-moves rule, ~40% tax wedge), so a crude move only partly reaches the pump — a measured pass-through β well below 1. With the domestic cost of oil deliberately smoothed, oil shocks carry little signal for A-share returns. (`scripts/fetch_fuel.py` + `scripts/fuel_passthrough.py` → `results/fuel/FUEL.md`)
 - **Oil benchmark.** Every fetcher takes `--oil brent` (default) or `--oil wti`.
 
-> **Scope note:** the extension data ends **2025-10-13**. The 2026 US–Iran / Strait of Hormuz crisis is *after* the window and is **not** captured here; testing that shock would need a separate, dated data refresh.
+> **Scope note:** the fetchers default to a window ending **2026-09-30**, so the sample now runs *into* 2026 and spans the Strait of Hormuz / US–Iran period. Whether that shock shows up as a spike in the oil–China conditional correlation is then an empirical question the extended data answers — read it off `results/`, don't assume it. (The exact end date is a `--end` flag; every figure/report prints the real dates from the data.)
 
 ## Repository layout
 
