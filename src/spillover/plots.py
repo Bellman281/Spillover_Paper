@@ -165,6 +165,36 @@ def fig_corr_matrix(R_t, labels, dates, out: Path) -> Path:
     return p
 
 
+def fig_compare(old, new, out: Path) -> Path:
+    """Grouped bars: avg correlation, hedge ratio, hedging effectiveness, two periods."""
+    names = list(old.table.index)
+    y = np.arange(len(names))
+    panels = [
+        ("avg_corr", "Avg conditional correlation with oil", 1.0),
+        ("avg_hedge_ratio", "Avg optimal hedge ratio", 1.0),
+        ("hedging_effectiveness", "Hedging effectiveness", 100.0),
+    ]
+    fig, axes = plt.subplots(1, 3, figsize=(13.5, 4.8), sharey=True)
+    lo = f"{old.start:%Y}–{old.end:%Y}"
+    ne = f"{new.start:%Y}–{new.end:%Y}"
+    for ax, (col, title, scale) in zip(axes, panels):
+        ax.barh(y + 0.2, scale * old.table[col].to_numpy(), height=0.38, color=MUTED, label=lo)
+        ax.barh(y - 0.2, scale * new.table[col].to_numpy(), height=0.38, color=COPPER, label=ne)
+        ax.set_yticks(y, names, fontsize=9)
+        ax.set_title(title, fontsize=11, loc="left")
+        ax.grid(True, axis="x")
+        ax.grid(False, axis="y")
+        ax.invert_yaxis()
+    axes[2].set_xlabel("% variance reduction")
+    axes[0].legend(fontsize=9, loc="lower right")
+    fig.suptitle("Does it hold a decade later?  Oil–China hedging, two periods",
+                 x=0.09, ha="left", fontsize=13, weight="bold")
+    p = out / "fig_extension_comparison.png"
+    fig.savefig(p, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    return p
+
+
 def fig_effectiveness(he_table: pd.DataFrame, out: Path) -> Path:
     t = he_table.sort_values("hedging_effectiveness")
     fig, ax = plt.subplots(figsize=(8, 4.2))
