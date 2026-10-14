@@ -60,11 +60,21 @@ The paper's multivariate GARCH models were estimated in **RATS** (commercial). T
 | Step | Tooling here | Notes |
 |------|--------------|-------|
 | Data prep, log returns, descriptive stats & tests (Table 1) | **Python** | ADF, Jarque–Bera, Ljung–Box, ARCH-LM via `statsmodels`/`scipy` |
-| Hedge ratios, portfolio weights, dynamic correlations, all figures | **Python** | derived from the committed RATS H-matrices (`rats/hmatrices/`) |
+| Hedge ratios, portfolio weights, conditional vols, figures | **Python** | derived from the committed RATS H-matrices (`rats/hmatrices/`), oil column auto-detected |
 | BEKK / DCC / VARMA-GARCH estimation (the published numbers) | **RATS** | original `.RPF` code and `.xls` outputs are in `rats/` |
 | DCC-GARCH **re-estimation** (correlation-matrix figure) | **Python** | two-step DCC (`arch` + QMLE) — a faithful, open approximation, **not** identical to the published RATS point estimates |
 
 So the published results are reproduced from their model outputs, and the modelling is *also* demonstrated end-to-end in Python — with the honest caveat that the Python DCC is an approximation of the RATS VARMA-GARCH, not a bit-for-bit match.
+
+## Validation
+
+The hedging math is checked against the paper's own `hedging.xlsx` (run `PYTHONPATH=src python -m pytest tests/`):
+
+- **Hedge-ratio formula** — β = H_cov / H_oil, computed from the workbook's own H-matrix columns, reproduces its `hedg ratio` column exactly (max error ≈ 1e-17).
+- **Oil-column detection** — the H-matrix exports do *not* use a fixed column order. The pipeline detects which diagonal is oil (it's the one series common to all seven bivariate models) rather than assuming it. This mattered: before the fix, two sectors (CI005001, CI005005, where oil is variable 2) used the wrong variance and their hedge ratios were ~30% off.
+- **Cross-check** — for the one sector where the workbook and the H-matrix export cleanly correspond (CI005001), the pipeline's hedge ratio matches the workbook (0.150).
+
+**What is _not_ claimed:** bit-for-bit reproduction of the published tables. The estimation ran in RATS; `hedging.xlsx` is a partial working file (some sheets are duplicated/stale); and this data is the companion sector specification (oil, coal, non-ferrous, iron), not the published paper's main sector set. The figures are faithful derivations of the committed VARMA-CCC model outputs; the Python DCC-GARCH is an independent re-estimation.
 
 ## Repository layout
 

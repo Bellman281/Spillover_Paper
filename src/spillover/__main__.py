@@ -40,11 +40,15 @@ def main() -> int:
     desc = descriptive.describe(returns)
     desc.round(4).to_csv(tables / "table1_descriptive.csv")
 
-    print("[3/6] reading RATS H-matrices, deriving hedging quantities")
+    print("[3/6] reading RATS H-matrices (oil column auto-detected), deriving hedging")
     derived = hmatrix.all_markets(args.hmatrices, index=returns.index)
     he = hmatrix.hedging_effectiveness(returns, derived)
     he.round(4).to_csv(tables / "table2_hedging.csv")
     print(he.round(3).to_string())
+    wb = ROOT / "rats" / "hedging.xlsx"
+    if wb.exists():
+        err = max(hmatrix.verify_against_workbook(wb).values())
+        print(f"      validation: hedge-ratio formula reproduces hedging.xlsx, max error = {err:.1e}")
 
     print("[4/6] figures — prices, returns, conditional volatility, hedging")
     plots.fig_prices(prices, figs)

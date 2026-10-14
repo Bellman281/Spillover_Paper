@@ -1,79 +1,98 @@
 """Read the RATS VARMA-GARCH H-matrices and derive the hedging quantities.
 
-Each ``McAl-<code>-Hmatrix.xls`` is a bivariate (oil, market) model and holds
-three columns of the time-varying conditional covariance matrix H_t:
+Each ``McAl-<code>-Hmatrix.xls`` is a bivariate (oil, market) model with three
+columns of the time-varying conditional covariance matrix H_t. **The column
+order is not fixed:** in some files oil is variable 1, in others variable 2
+(verified empirically — see ``detect_oil_column``). We therefore detect which
+diagonal is oil rather than assuming it, using the fact that oil is the one
+series common to all seven bivariate models, so its conditional-variance path
+is (nearly) identical across files while each market's is idiosyncratic.
 
-    VARMAHMATRIX(1,1) = conditional variance of oil
-    VARMAHMATRIX(2,1) = conditional covariance of oil and the market
-    VARMAHMATRIX(2,2) = conditional variance of the market
+Given the correctly oriented H_t, following Kroner & Ng (1998):
 
-From H_t we derive, following Kroner & Ng (1998):
+    dynamic conditional correlation  rho_t = H_cov / sqrt(H_oil * H_mkt)
+    optimal hedge ratio              beta_t = H_cov / H_oil
+    optimal oil portfolio weight     w_t    = (H_mkt - H_cov) / (H_mkt - 2 H_cov + H_oil)
 
-    dynamic conditional correlation  rho_t = H21 / sqrt(H11 * H22)
-    optimal hedge ratio              beta_t = H21 / H11
-    optimal oil portfolio weight     w_t    = (H22 - H21) / (H11 - 2 H21 + H22)
+The hedge-ratio formula is verified to reproduce the paper's own
+``hedging.xlsx`` exactly (``verify_against_workbook``).
 """
 
 from __future__ import annotations
 
-import math
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
-from . import MARKETS, OIL
+from . import MARKETS
 
 TRADING_DAYS = 252
-_COLS = {
-    "VARMAHMATRIX(1,1": "H_oil",
-    "VARMAHMATRIX(2,1": "H_cov",
-    "VARMAHMATRIX(2,2": "H_mkt",
-}
 
 
-def load_hmatrix(code: str, hmatrix_dir: str | Path) -> pd.DataFrame:
-    """Read one H-matrix file and return columns H_oil, H_cov, H_mkt."""
+def load_raw(code: str, hmatrix_dir: str | Path) -> pd.DataFrame:
+    """Read one H-matrix file as its three raw columns: d1, cov, d2."""
     path = Path(hmatrix_dir) / f"McAl-{code}-Hmatrix.xls"
     raw = pd.read_excel(path, engine="xlrd")
-    raw = raw.rename(columns=lambda c: _COLS.get(str(c).strip(), str(c)))
-    return raw[["H_oil", "H_cov", "H_mkt"]].astype(float).reset_index(drop=True)
+    raw.columns = ["d1", "cov", "d2"]
+    return raw.astype(float).reset_index(drop=True)
 
 
-def derive(h: pd.DataFrame) -> pd.DataFrame:
-    """Dynamic correlation, hedge ratio, oil weight, annualized vols."""
-    out = pd.DataFrame(index=h.index)
-    out["corr"] = h["H_cov"] / np.sqrt(h["H_oil"] * h["H_mkt"])
-    out["hedge_ratio"] = h["H_cov"] / h["H_oil"]
-    denom = h["H_oil"] - 2 * h["H_cov"] + h["H_mkt"]
-    out["oil_weight"] = ((h["H_mkt"] - h["H_cov"]) / denom).clip(0.0, 1.0)
-    out["vol_oil"] = np.sqrt(TRADING_DAYS * h["H_oil"])
-    out["vol_mkt"] = np.sqrt(TRADING_DAYS * h["H_mkt"])
+def detect_oil_column(raws: dict[str, pd.DataFrame], iters: int = 4) -> dict[str, int]:
+    """Return {code: 1 or 2} naming the column that holds oil's variance.
+
+    Oil is the common variable, so its variance series is ~identical across
+    files. We iteratively build a consensus oil series and, for each file, pick
+    the diagonal whose path correlates best with it.
+    """
+    length = min(len(df) for df in raws.values())
+    oil_col = dict.fromkeys(raws, 1)  # start: assume column 1
+    for _ in range(iters):
+        stack = []
+        for code, df in raws.items():
+            col = "d1" if oil_col[code] == 1 else "d2"
+            stack.append(df[col].to_numpy()[-length:])
+        consensus = np.median(np.vstack(stack), axis=0)
+        for code, df in raws.items():
+            d1 = df["d1"].to_numpy()[-length:]
+            d2 = df["d2"].to_numpy()[-length:]
+            c1 = np.corrcoef(d1, consensus)[0, 1]
+            c2 = np.corrcoef(d2, consensus)[0, 1]
+            oil_col[code] = 1 if c1 >= c2 else 2
+    return oil_col
+
+
+def _derive(df: pd.DataFrame, oil_col: int) -> pd.DataFrame:
+    h_oil = df["d1"] if oil_col == 1 else df["d2"]
+    h_mkt = df["d2"] if oil_col == 1 else df["d1"]
+    h_cov = df["cov"]
+    out = pd.DataFrame(index=df.index)
+    out["corr"] = h_cov / np.sqrt(h_oil * h_mkt)
+    out["hedge_ratio"] = h_cov / h_oil
+    denom = h_oil - 2 * h_cov + h_mkt
+    out["oil_weight"] = ((h_mkt - h_cov) / denom).clip(0.0, 1.0)
+    out["vol_oil"] = np.sqrt(TRADING_DAYS * h_oil)
+    out["vol_mkt"] = np.sqrt(TRADING_DAYS * h_mkt)
     return out
 
 
 def all_markets(hmatrix_dir: str | Path, index: pd.DatetimeIndex | None = None):
-    """Return {code: derived DataFrame} for every market, optionally dated.
-
-    The RATS output has two fewer rows than the price panel (one lost to
-    differencing, one to the VAR lag); we align to the last N dates.
-    """
+    """Return {code: derived DataFrame} for every market, oil-column auto-detected."""
+    raws = {code: load_raw(code, hmatrix_dir) for code in MARKETS}
+    oil_col = detect_oil_column(raws)
     result: dict[str, pd.DataFrame] = {}
-    for code in MARKETS:
-        h = load_hmatrix(code, hmatrix_dir)
-        d = derive(h)
+    for code, df in raws.items():
+        d = _derive(df, oil_col[code])
         if index is not None:
             d.index = index[-len(d):]
         result[code] = d
     return result
 
 
-def hedging_effectiveness(returns: pd.DataFrame, derived: dict[str, pd.DataFrame]) -> pd.DataFrame:
-    """Variance reduction from the oil hedge, per market.
+def hedging_effectiveness(returns, derived):
+    """Variance reduction from the oil hedge, per market (HE = 1 - Var(hedged)/Var(mkt))."""
+    from . import OIL
 
-    HE = 1 - Var(r_mkt - beta_t * r_oil) / Var(r_mkt), using the time-varying
-    hedge ratio aligned to the realized returns.
-    """
     rows = []
     r_oil_full = returns[OIL]
     for code, name in MARKETS.items():
@@ -95,3 +114,23 @@ def hedging_effectiveness(returns: pd.DataFrame, derived: dict[str, pd.DataFrame
             }
         )
     return pd.DataFrame(rows).set_index("series")
+
+
+# Sheet name in hedging.xlsx <- CI sector code
+_WORKBOOK_SHEETS = {"CI005001": "5001", "CI005002": "5002", "CI005003": "5003", "CI005005": "5005"}
+
+
+def verify_against_workbook(workbook: str | Path) -> dict[str, float]:
+    """Reproduce the paper's `hedging.xlsx` hedge ratios from its own H-columns.
+
+    For each CI-sector sheet, oil is variable 2 (H22); hedge ratio = H21 / H22.
+    Returns {sheet: max abs error vs the sheet's 'hedg ratio' column} — all ~0.
+    """
+    errors = {}
+    for sheet in _WORKBOOK_SHEETS.values():
+        raw = pd.read_excel(workbook, sheet_name=sheet, header=None)
+        d = raw.iloc[1:].apply(pd.to_numeric, errors="coerce")
+        h21, h22, hedg = d[1].to_numpy(), d[2].to_numpy(), d[8].to_numpy()
+        mask = ~np.isnan(h21) & ~np.isnan(hedg)
+        errors[sheet] = float(np.max(np.abs((h21[mask] / h22[mask]) - hedg[mask])))
+    return errors
