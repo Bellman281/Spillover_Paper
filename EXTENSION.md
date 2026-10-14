@@ -85,6 +85,21 @@ It regresses Δln(fuel) on Δln(crude) at each adjustment event; a pass-through
 β well below 1 shows how little of a crude shock reaches the Chinese consumer —
 and therefore Chinese demand, margins, and equity returns.
 
+## Step 5 — zoom on the 2026 oil shock
+
+A decade average can hide a short tail spike. This tracks the *time-varying*
+oil–China DCC correlation and marks the biggest crude moves of a focus year
+(default 2026), so you can see whether a real oil-supply scare broke the link:
+
+```bash
+PYTHONPATH=src python scripts/oil_shock_window.py \
+    --data data/raw/source_extension.csv --focus-year 2026
+```
+
+Writes `results/shock/`: `SHOCK.md` + `fig_oil_shock_window.png`. It is
+data-driven — it assumes no event date, just flags the largest |oil-return| days
+and reports the correlation around them versus the full-sample mean.
+
 ## Sample window and the 2026 Strait of Hormuz period
 
 The fetchers default to **2014-10-18 → 2026-09-30**, so the extended sample now
