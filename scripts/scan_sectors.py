@@ -11,7 +11,7 @@ Usage:
     PYTHONPATH=src python scripts/scan_sectors.py --data data/raw/scan_universe.csv
 
     # or just the paper's seven series (no extra fetch needed)
-    PYTHONPATH=src python scripts/scan_sectors.py --data data/raw/source_2014_2025.csv
+    PYTHONPATH=src python scripts/scan_sectors.py --data data/raw/source_extension.csv
 
 Writes to ``results/scan/``:
     scan.csv        ranked table

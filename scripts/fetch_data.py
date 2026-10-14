@@ -1,16 +1,20 @@
 #!/usr/bin/env python3
-"""Fetch 2014-2025 daily data for the oil-China spillover extension.
+"""Fetch the extension-period daily data for the oil-China spillover study.
+
+Default window 2014-10-18 -> 2026-09-30 (override with --start / --end), so the
+sample now runs into 2026 and spans the Strait of Hormuz period.
 
 Run in your OWN terminal (needs open internet; the sandboxed shells block the
 data sites):
 
     python3 -m venv .venv && source .venv/bin/activate
     pip install akshare yfinance -r requirements.txt
-    python scripts/fetch_data.py                 # Brent (default)
-    python scripts/fetch_data.py --oil wti        # WTI instead
-    python scripts/fetch_data.py --refresh        # ignore the cache
+    python scripts/fetch_data.py                   # Brent, to 2026-09-30
+    python scripts/fetch_data.py --oil wti          # WTI instead
+    python scripts/fetch_data.py --end 2026-08-31   # different end date
+    python scripts/fetch_data.py --refresh          # ignore the cache
 
-Writes ``data/raw/source_2014_2025.csv`` in the original schema:
+Writes ``data/raw/source_extension.csv`` in the original schema:
 
     date, OilRmb, SZ399001, SG000001, HS000300, CI005001, CI005002, CI005003, CI005005
 
@@ -32,10 +36,21 @@ from pathlib import Path
 
 import pandas as pd
 
-START, END = pd.Timestamp("2014-10-18"), pd.Timestamp("2025-10-13")
+# Window. END defaults forward so the sample reaches into 2026 (the Strait of
+# Hormuz period). Override with --start / --end on any fetcher.
+START, END = pd.Timestamp("2014-10-18"), pd.Timestamp("2026-09-30")
 ROOT = Path(__file__).resolve().parents[1]
-OUT = ROOT / "data" / "raw" / "source_2014_2025.csv"
+OUT = ROOT / "data" / "raw" / "source_extension.csv"
 CACHE = ROOT / "data" / "raw" / "_cache"
+
+
+def set_window(start: str | None, end: str | None) -> None:
+    """Override the module-level sample window (shared by all fetch helpers)."""
+    global START, END
+    if start:
+        START = pd.Timestamp(start)
+    if end:
+        END = pd.Timestamp(end)
 
 SCHEMA = ["OilRmb", "SG000001", "SZ399001", "HS000300",
           "CI005001", "CI005002", "CI005003", "CI005005"]
@@ -57,7 +72,9 @@ def _pick(cols, keys):
 
 
 def _series(df: pd.DataFrame, name: str,
-            start: pd.Timestamp = START, end: pd.Timestamp = END) -> pd.Series:
+            start: pd.Timestamp | None = None, end: pd.Timestamp | None = None) -> pd.Series:
+    start = START if start is None else start   # read globals at call time
+    end = END if end is None else end
     cols = [str(c) for c in df.columns]
     df = df.copy()
     df.columns = cols
@@ -74,8 +91,13 @@ def _series(df: pd.DataFrame, name: str,
 
 
 def cached(code: str, fetch, refresh: bool = False) -> pd.Series:
-    """Return the series from disk cache, or fetch + cache it."""
-    f = CACHE / f"{code}.csv"
+    """Return the series from disk cache, or fetch + cache it.
+
+    The cache key carries the sample end date, so moving --end naturally
+    re-fetches (instead of serving a stale, truncated series) while re-running
+    the same window still hits the cache.
+    """
+    f = CACHE / f"{code}__to{END:%Y%m%d}.csv"
     if f.exists() and not refresh:
         s = pd.read_csv(f, index_col=0, parse_dates=True).iloc[:, 0]
         s.name = code
@@ -129,10 +151,14 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--oil", choices=list(OIL_TICKERS), default="brent",
                     help="crude benchmark for OilRmb (default: brent)")
+    ap.add_argument("--start", default=None, help="sample start (YYYY-MM-DD)")
+    ap.add_argument("--end", default=None, help="sample end (YYYY-MM-DD); default 2026-09-30")
     ap.add_argument("--refresh", action="store_true", help="ignore the disk cache")
     args = ap.parse_args()
 
-    print(f"oil benchmark: {args.oil.upper()} ({OIL_TICKERS[args.oil]})")
+    set_window(args.start, args.end)
+    print(f"oil benchmark: {args.oil.upper()} ({OIL_TICKERS[args.oil]})  "
+          f"window {START:%Y-%m-%d} .. {END:%Y-%m-%d}")
     series = {}
     for code, sym in BROAD.items():
         series[code] = cached(code, fetch_broad(sym), args.refresh)
