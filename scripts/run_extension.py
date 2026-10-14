@@ -27,14 +27,26 @@ def write_report(path: Path, old, new, cmp) -> None:
     nc = new.table["avg_corr"].mean()
     ohe = 100 * old.table["hedging_effectiveness"].mean()
     nhe = 100 * new.table["hedging_effectiveness"].mean()
-    still_weak = nc < 0.35
-    verdict = (
-        "The conclusion **broadly holds**: oil remains weakly correlated with "
-        "Chinese markets and still works as a diversifier/hedge."
-        if still_weak
-        else "The conclusion **weakens**: oil is now materially more correlated "
-        "with Chinese markets, so its diversification benefit has shrunk."
-    )
+    d = nc - oc
+    if nc >= 0.35:
+        verdict = (
+            "**The conclusion weakens.** Oil is now materially more correlated with "
+            "Chinese markets, so its diversification benefit has shrunk."
+        )
+    elif d < -0.01:
+        verdict = (
+            "**The conclusion holds, and if anything strengthens.** Oil's conditional "
+            "correlation with Chinese markets has *fallen* further over the decade, so "
+            "oil is an even better diversifier than in the original sample. Hedging "
+            "*effectiveness* is lower, but that is a consequence of the weaker link, not a "
+            "contradiction: with oil and Chinese equities barely co-moving, there is little "
+            "oil-driven variance left for an oil hedge to remove."
+        )
+    else:
+        verdict = (
+            "**The conclusion holds.** Oil remains weakly correlated with Chinese markets "
+            "and still works as a diversifier/hedge."
+        )
     lines = [
         "# Does the conclusion hold a decade later?",
         "",
