@@ -126,7 +126,8 @@ def main() -> int:
         table = scan.scan(rets, oil_col=args.oil_col)
 
     table.round(4).to_csv(out / "scan.csv")
-    plots.fig_scan(table, out, oil_label=args.oil_label)
+    period = f"{span.index.min():%Y}–{span.index.max():%Y}"
+    plots.fig_scan(table, out, oil_label=args.oil_label, period=period)
     write_report(out / "SCAN.md", table, args.oil_label,
                  span.index.min(), span.index.max())
     print(table.round(3).to_string())
